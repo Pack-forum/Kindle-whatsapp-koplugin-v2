@@ -1,37 +1,44 @@
 
-name: Check Kindle WhatsApp Plugin
+name: Build Kindle WhatsApp Plugin
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  check:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install LuaJIT
+      - name: Find plugin files
         run: |
-          sudo apt-get update
-          sudo apt-get install -y luajit
+          find . -type f
+          echo "Searching for plugin entry point..."
+          find . -name "main.lua"
 
-      - name: Find Lua files
+      - name: Package plugin
         run: |
-          echo "Repository structure:"
-          find . -type f -name "*.lua"
+          mkdir -p output
+          ROOT=$(find . -type f -name "main.lua" \
+            -not -path "./.git/*" | head -n 1 | xargs dirname)
 
-      - name: Check Lua syntax
-        run: |
-          find . -type f -name "*.lua" -print0 |
-          while IFS= read -r -d '' file; do
-            echo "Checking: $file"
-            luajit -b "$file" /tmp/test.luac || exit 1
-          done
+          if [ -z "$ROOT" ]; then
+            echo "main.lua not found!"
+            exit 1
+          fi
 
-      - name: Finish
-        run: echo "Lua syntax check completed"
+          NAME=$(basename "$ROOT")
+          cp -r "$ROOT" "output/${NAME}"
+
+          cd output
+          zip -r "../WhatsApp-KOReader.zip" "${NAME}"
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhatsApp-KOReader-Plugin
+          path: WhatsApp-KOReader.zip

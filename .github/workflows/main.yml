@@ -1,0 +1,37 @@
+
+name: Check Kindle WhatsApp Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Install LuaJIT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luajit
+
+      - name: Find Lua files
+        run: |
+          echo "Repository structure:"
+          find . -type f -name "*.lua"
+
+      - name: Check Lua syntax
+        run: |
+          find . -type f -name "*.lua" -print0 |
+          while IFS= read -r -d '' file; do
+            echo "Checking: $file"
+            luajit -b "$file" /tmp/test.luac || exit 1
+          done
+
+      - name: Finish
+        run: echo "Lua syntax check completed"
